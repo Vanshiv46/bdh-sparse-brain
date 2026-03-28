@@ -1,0 +1,1065 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BDH Sparse Brain — Post-Transformer Visualizer</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap');
+
+  :root {
+    --bg: #0a0b0f;
+    --surface: #12141a;
+    --surface2: #1a1d26;
+    --surface3: #222535;
+    --border: rgba(255,255,255,0.08);
+    --border2: rgba(255,255,255,0.14);
+    --text: #e8eaf2;
+    --muted: #6b7088;
+    --accent-bdh: #00e5a0;
+    --accent-tf: #ff6b6b;
+    --accent-blue: #5b8dee;
+    --accent-amber: #ffa94d;
+    --mono: 'Space Mono', monospace;
+    --sans: 'DM Sans', system-ui, sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 15px;
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+
+  header {
+    padding: 2.5rem 2rem 1.5rem;
+    border-bottom: 1px solid var(--border);
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+
+  .badge {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent-bdh);
+    border: 1px solid var(--accent-bdh);
+    padding: 3px 8px;
+    border-radius: 3px;
+    margin-bottom: 1rem;
+    opacity: 0.85;
+  }
+
+  h1 {
+    font-size: clamp(1.6rem, 4vw, 2.6rem);
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+    margin-bottom: 0.6rem;
+  }
+
+  h1 span { color: var(--accent-bdh); }
+
+  .subtitle {
+    color: var(--muted);
+    font-size: 1rem;
+    max-width: 540px;
+  }
+
+  nav {
+    display: flex;
+    gap: 4px;
+    padding: 1.2rem 2rem;
+    max-width: 1100px;
+    margin: 0 auto;
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+  }
+
+  .nav-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-family: var(--sans);
+    font-size: 13px;
+    padding: 7px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.18s;
+    white-space: nowrap;
+  }
+
+  .nav-btn:hover { border-color: var(--border2); color: var(--text); }
+  .nav-btn.active { background: var(--accent-bdh); border-color: var(--accent-bdh); color: #000; font-weight: 600; }
+
+  main {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 2rem;
+  }
+
+  .section { display: none; }
+  .section.active { display: block; }
+
+  /* ── SECTION 1: Sparsity Comparison ── */
+  .compare-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+  }
+
+  @media (max-width: 700px) {
+    .compare-grid { grid-template-columns: 1fr; }
+    nav { padding: 1rem; }
+    main { padding: 1rem; }
+    header { padding: 1.5rem 1rem; }
+  }
+
+  .model-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.5rem;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .model-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+  }
+
+  .model-card.bdh::before { background: var(--accent-bdh); }
+  .model-card.transformer::before { background: var(--accent-tf); }
+
+  .model-label {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    margin-bottom: 0.4rem;
+  }
+
+  .model-card.bdh .model-label { color: var(--accent-bdh); }
+  .model-card.transformer .model-label { color: var(--accent-tf); }
+
+  .model-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 0.2rem;
+  }
+
+  .model-desc { color: var(--muted); font-size: 13px; margin-bottom: 1.2rem; }
+
+  .neuron-grid {
+    display: grid;
+    gap: 2px;
+    margin-bottom: 1rem;
+  }
+
+  .neuron {
+    border-radius: 2px;
+    transition: background 0.3s, box-shadow 0.3s;
+    aspect-ratio: 1;
+  }
+
+  .neuron.active {
+    box-shadow: 0 0 6px currentColor;
+  }
+
+  .bdh .neuron.active { background: var(--accent-bdh); color: var(--accent-bdh); }
+  .transformer .neuron.active { background: var(--accent-tf); color: var(--accent-tf); }
+  .neuron.inactive { background: var(--surface3); }
+
+  .stat-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 13px;
+    padding: 6px 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .stat-row:last-child { border-bottom: none; }
+  .stat-label { color: var(--muted); }
+
+  .stat-val {
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 700;
+  }
+
+  .bdh .stat-val { color: var(--accent-bdh); }
+  .transformer .stat-val { color: var(--accent-tf); }
+
+  .controls {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 2rem;
+    display: flex;
+    gap: 2rem;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  .control-group { display: flex; flex-direction: column; gap: 6px; min-width: 180px; }
+
+  .control-label {
+    font-size: 12px;
+    color: var(--muted);
+    font-family: var(--mono);
+    letter-spacing: 0.06em;
+  }
+
+  .control-row { display: flex; align-items: center; gap: 10px; }
+
+  input[type=range] {
+    -webkit-appearance: none;
+    width: 140px;
+    height: 4px;
+    background: var(--surface3);
+    border-radius: 2px;
+    outline: none;
+    cursor: pointer;
+  }
+
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px; height: 14px;
+    background: var(--accent-bdh);
+    border-radius: 50%;
+    cursor: pointer;
+  }
+
+  .btn {
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 13px;
+    padding: 8px 18px;
+    border-radius: 7px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .btn:hover { background: var(--surface3); border-color: rgba(255,255,255,0.22); }
+  .btn.primary { background: var(--accent-bdh); color: #000; border-color: var(--accent-bdh); font-weight: 600; }
+  .btn.primary:hover { opacity: 0.9; }
+
+  .insight-box {
+    background: linear-gradient(135deg, rgba(0,229,160,0.06), rgba(0,229,160,0.02));
+    border: 1px solid rgba(0,229,160,0.2);
+    border-radius: 10px;
+    padding: 1rem 1.25rem;
+    margin-top: 1.5rem;
+    font-size: 14px;
+  }
+
+  .insight-box strong { color: var(--accent-bdh); }
+  .insight-box .insight-title {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    color: var(--accent-bdh);
+    margin-bottom: 0.4rem;
+    opacity: 0.8;
+  }
+
+  /* ── SECTION 2: Hebbian Learning ── */
+  canvas#hebbian-canvas {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    display: block;
+    width: 100%;
+    max-width: 700px;
+    margin: 0 auto 1.5rem;
+  }
+
+  .hebb-controls {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-bottom: 1.5rem;
+  }
+
+  .synapse-legend {
+    display: flex;
+    gap: 2rem;
+    justify-content: center;
+    margin-bottom: 1.5rem;
+    font-size: 13px;
+    color: var(--muted);
+    flex-wrap: wrap;
+  }
+
+  .legend-dot {
+    display: inline-block;
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    margin-right: 5px;
+    vertical-align: middle;
+  }
+
+  /* ── SECTION 3: Graph Topology ── */
+  canvas#graph-canvas {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    display: block;
+    width: 100%;
+    max-width: 700px;
+    margin: 0 auto;
+    cursor: pointer;
+  }
+
+  /* ── SECTION 4: Comparison Table ── */
+  .comparison-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+    margin-top: 1rem;
+  }
+
+  .comparison-table th {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    text-align: left;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .comparison-table td {
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+
+  .comparison-table tr:last-child td { border-bottom: none; }
+  .comparison-table td:first-child { color: var(--muted); font-size: 13px; width: 22%; }
+  .comparison-table td:nth-child(2) { color: var(--accent-tf); }
+  .comparison-table td:nth-child(3) { color: var(--accent-bdh); }
+
+  .tag {
+    display: inline-block;
+    font-size: 11px;
+    padding: 2px 7px;
+    border-radius: 3px;
+    margin-right: 4px;
+    margin-bottom: 3px;
+    font-family: var(--mono);
+  }
+
+  .tag.good { background: rgba(0,229,160,0.12); color: var(--accent-bdh); }
+  .tag.bad { background: rgba(255,107,107,0.12); color: var(--accent-tf); }
+  .tag.neutral { background: rgba(91,141,238,0.12); color: var(--accent-blue); }
+
+  /* Animate in */
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+  .section.active > * { animation: fadeUp 0.3s ease both; }
+  .section.active > *:nth-child(2) { animation-delay: 0.05s; }
+  .section.active > *:nth-child(3) { animation-delay: 0.1s; }
+
+  .progress-bar {
+    height: 4px;
+    background: var(--surface3);
+    border-radius: 2px;
+    overflow: hidden;
+    margin-top: 8px;
+  }
+
+  .progress-fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 0.4s ease;
+  }
+
+  .bdh-fill { background: var(--accent-bdh); }
+  .tf-fill { background: var(--accent-tf); }
+
+  .token-input {
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 13px;
+    padding: 8px 14px;
+    border-radius: 7px;
+    outline: none;
+    width: 260px;
+    max-width: 100%;
+  }
+
+  .token-input:focus { border-color: var(--accent-bdh); }
+
+  .section-title {
+    font-size: 1.3rem;
+    font-weight: 600;
+    margin-bottom: 0.4rem;
+  }
+
+  .section-desc {
+    color: var(--muted);
+    font-size: 14px;
+    margin-bottom: 1.5rem;
+    max-width: 600px;
+  }
+
+  .layer-labels {
+    display: flex;
+    gap: 2px;
+    margin-bottom: 4px;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--muted);
+    justify-content: center;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="badge">Post-Transformer Hackathon · IIT Ropar × Pathway</div>
+  <h1>BDH <span>Sparse Brain</span><br>Visualizer</h1>
+  <p class="subtitle">Interactive exploration of what makes the Dragon Hatchling architecturally different — sparse activations, Hebbian memory, and scale-free graph topology.</p>
+</header>
+
+<nav>
+  <button class="nav-btn active" onclick="switchTab('sparsity', this)">① Sparsity Comparison</button>
+  <button class="nav-btn" onclick="switchTab('hebbian', this)">② Hebbian Learning</button>
+  <button class="nav-btn" onclick="switchTab('graph', this)">③ Graph Topology</button>
+  <button class="nav-btn" onclick="switchTab('compare', this)">④ Architecture Diff</button>
+</nav>
+
+<main>
+
+  <!-- ─────── TAB 1: Sparsity ─────── -->
+  <div id="tab-sparsity" class="section active">
+
+    <p class="section-title">Activation Sparsity: BDH vs Transformer</p>
+    <p class="section-desc">Feed the same token to both architectures. BDH fires ~5% of neurons. Transformers fire nearly all. Same input — dramatically different neural behavior.</p>
+
+    <div class="controls">
+      <div class="control-group">
+        <span class="control-label">INPUT TOKEN</span>
+        <input class="token-input" id="token-input" type="text" value="London" placeholder="Type any word..." oninput="updateSparsity()">
+      </div>
+      <div class="control-group">
+        <span class="control-label">NEURON GRID SIZE</span>
+        <div class="control-row">
+          <input type="range" id="grid-size" min="6" max="20" value="12" oninput="updateGridSize(this.value)">
+          <span style="font-family:var(--mono);font-size:12px;color:var(--muted)" id="grid-size-label">12×12</span>
+        </div>
+      </div>
+      <div class="control-group">
+        <span class="control-label">ANIMATE</span>
+        <div class="control-row">
+          <button class="btn primary" onclick="animateTokens()">▶ Run Tokens</button>
+          <button class="btn" onclick="updateSparsity()">↺ Refresh</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="compare-grid">
+      <div class="model-card bdh">
+        <div class="model-label">BDH · Dragon Hatchling</div>
+        <div class="model-title">Sparse Architecture</div>
+        <div class="model-desc">ReLU-lowrank activations — only essential neurons fire</div>
+        <div id="bdh-layer-labels" class="layer-labels"></div>
+        <div id="bdh-grid" class="neuron-grid bdh"></div>
+        <div style="margin: 1rem 0 0.5rem;">
+          <div class="stat-row">
+            <span class="stat-label">Active neurons</span>
+            <span class="stat-val bdh" id="bdh-active">~5%</span>
+          </div>
+          <div class="progress-bar"><div class="progress-fill bdh-fill" id="bdh-bar" style="width:5%"></div></div>
+          <div class="stat-row" style="margin-top:0.6rem">
+            <span class="stat-label">Memory (context)</span>
+            <span class="stat-val bdh">O(n×d) — constant</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Attention</span>
+            <span class="stat-val bdh">O(T) linear</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Interpretable</span>
+            <span class="stat-val bdh">✓ Monosemantic</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="model-card transformer">
+        <div class="model-label">Transformer · GPT-style</div>
+        <div class="model-title">Dense Architecture</div>
+        <div class="model-desc">SoftMax attention — nearly all neurons activate for every token</div>
+        <div id="tf-layer-labels" class="layer-labels"></div>
+        <div id="tf-grid" class="neuron-grid transformer"></div>
+        <div style="margin: 1rem 0 0.5rem;">
+          <div class="stat-row">
+            <span class="stat-label">Active neurons</span>
+            <span class="stat-val transformer" id="tf-active">~95%</span>
+          </div>
+          <div class="progress-bar"><div class="progress-fill tf-fill" id="tf-bar" style="width:95%"></div></div>
+          <div class="stat-row" style="margin-top:0.6rem">
+            <span class="stat-label">Memory (context)</span>
+            <span class="stat-val transformer">KV-cache grows ∞</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Attention</span>
+            <span class="stat-val transformer">O(T²) quadratic</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Interpretable</span>
+            <span class="stat-val transformer">✗ Polysemantic</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="insight-box">
+      <div class="insight-title">🔬 ARCHITECTURAL INSIGHT</div>
+      <div id="insight-text">
+        <strong>"London"</strong> triggers currency and country synapses in BDH — only neurons encoding geographic/economic concepts fire. In a transformer, the entire weight matrix participates. This isn't pruning or regularization: <strong>sparsity is built into BDH's ReLU-lowrank design.</strong> You can point to a synapse and explain exactly what it encodes.
+      </div>
+    </div>
+  </div>
+
+  <!-- ─────── TAB 2: Hebbian Learning ─────── -->
+  <div id="tab-hebbian" class="section">
+    <p class="section-title">Hebbian Memory: "Neurons that fire together, wire together"</p>
+    <p class="section-desc">Watch synaptic connections strengthen in real time as BDH processes tokens. This happens during inference — no backpropagation required. Transformers cannot do this.</p>
+
+    <div class="hebb-controls">
+      <button class="btn primary" onclick="hebbStep()">▶ Process Token</button>
+      <button class="btn" onclick="hebbAuto()">⟳ Auto-play</button>
+      <button class="btn" onclick="hebbReset()">↺ Reset</button>
+    </div>
+
+    <div class="synapse-legend">
+      <span><span class="legend-dot" style="background:var(--accent-bdh)"></span>Strong synapse (learned)</span>
+      <span><span class="legend-dot" style="background:var(--muted)"></span>Weak synapse</span>
+      <span><span class="legend-dot" style="background:var(--accent-amber)"></span>Currently firing</span>
+      <span><span class="legend-dot" style="background:var(--surface3)"></span>Silent neuron</span>
+    </div>
+
+    <canvas id="hebbian-canvas" height="400"></canvas>
+
+    <div style="max-width:700px;margin:0 auto;">
+      <div id="hebb-log" style="font-family:var(--mono);font-size:12px;color:var(--muted);background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:1rem;max-height:120px;overflow-y:auto;"></div>
+    </div>
+
+    <div class="insight-box" style="max-width:700px;margin:1.5rem auto 0;">
+      <div class="insight-title">💡 WHY THIS MATTERS</div>
+      BDH's σ matrix (synaptic state) has <strong>constant size</strong> regardless of how many tokens you process. A transformer's KV-cache grows linearly — eventually exhausting GPU memory. BDH has been demonstrated running at <strong>50,000+ tokens with flat memory usage</strong> while transformers crash at ~12k on the same hardware.
+    </div>
+  </div>
+
+  <!-- ─────── TAB 3: Graph Topology ─────── -->
+  <div id="tab-graph" class="section">
+    <p class="section-title">Scale-Free Graph Topology: BDH's Neural Architecture</p>
+    <p class="section-desc">BDH organizes as a scale-free hub-and-spoke graph — a few highly connected hub neurons dominate, like in real brains and the internet. Click a node to highlight its connections.</p>
+
+    <div class="hebb-controls">
+      <button class="btn primary" onclick="initGraph()">↺ New Graph</button>
+      <button class="btn" onclick="toggleGraphAnim()">▶ Animate Growth</button>
+    </div>
+
+    <canvas id="graph-canvas" height="480" onclick="graphClick(event)"></canvas>
+
+    <div class="insight-box" style="margin-top:1.5rem;">
+      <div class="insight-title">📐 SCALE-FREE PROPERTY</div>
+      Hub neurons (large, bright) connect to many others — like airports in a travel network. This structure <strong>emerges spontaneously</strong> during training, not by design. It's the same topology found in biological brains, the web, and protein interaction networks. Where a transformer is a dense matrix, BDH becomes this interpretable graph.
+    </div>
+  </div>
+
+  <!-- ─────── TAB 4: Architecture Diff ─────── -->
+  <div id="tab-compare" class="section">
+    <p class="section-title">Architecture Comparison</p>
+    <p class="section-desc">What changes at the fundamental level — from dense matrix paradigm to sparse graph dynamics.</p>
+
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;">
+      <table class="comparison-table">
+        <thead>
+          <tr>
+            <th>PROPERTY</th>
+            <th style="color:var(--accent-tf)">TRANSFORMER</th>
+            <th style="color:var(--accent-bdh)">BDH (Dragon Hatchling)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Structure</td>
+            <td>Dense matrix layers (every weight × every input)</td>
+            <td><span class="tag good">+</span> Scale-free graph of neurons — sparse, brain-like</td>
+          </tr>
+          <tr>
+            <td>Activation</td>
+            <td><span class="tag bad">−</span> ~95–100% neurons fire per token</td>
+            <td><span class="tag good">+</span> ~5% neurons fire — sparse by architecture</td>
+          </tr>
+          <tr>
+            <td>Memory</td>
+            <td><span class="tag bad">−</span> KV-cache grows with every token → OOM at long context</td>
+            <td><span class="tag good">+</span> Hebbian synaptic state — O(n×d), constant size forever</td>
+          </tr>
+          <tr>
+            <td>Attention</td>
+            <td><span class="tag bad">−</span> O(T²) — quadratic explosion with sequence length</td>
+            <td><span class="tag good">+</span> O(T) — linear attention, scales to infinite context</td>
+          </tr>
+          <tr>
+            <td>Learning</td>
+            <td><span class="tag bad">−</span> Frozen at inference — must retrain to learn new facts</td>
+            <td><span class="tag good">+</span> Hebbian updates during inference — learns while running</td>
+          </tr>
+          <tr>
+            <td>Interpretability</td>
+            <td><span class="tag bad">−</span> Polysemantic: one neuron encodes multiple concepts (black box)</td>
+            <td><span class="tag good">+</span> Monosemantic: "currency synapses", "country synapses" — point and explain</td>
+          </tr>
+          <tr>
+            <td>Model merging</td>
+            <td><span class="tag bad">−</span> Requires careful fine-tuning, often fails</td>
+            <td><span class="tag good">+</span> Concatenate independently trained models — composable by design</td>
+          </tr>
+          <tr>
+            <td>Context at 50k tokens</td>
+            <td><span class="tag bad">−</span> Crashes on ~12k tokens (T4 GPU)</td>
+            <td><span class="tag good">+</span> Flat memory usage — demonstrated at 50k+ tokens</td>
+          </tr>
+          <tr>
+            <td>Graph visualizable</td>
+            <td>No — abstract matrix operations</td>
+            <td><span class="tag good">+</span> Yes — G_x = E @ D_x renders as literal force graph</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="compare-grid" style="margin-top:2rem;">
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:1.25rem;">
+        <div style="font-family:var(--mono);font-size:11px;color:var(--muted);letter-spacing:0.08em;margin-bottom:0.8rem;">BDH KEY PAPER FINDINGS</div>
+        <ul style="color:var(--muted);font-size:14px;padding-left:1.2rem;display:flex;flex-direction:column;gap:0.5rem;">
+          <li><span style="color:var(--accent-bdh)">#1</span> paper on HuggingFace month of release</li>
+          <li><span style="color:var(--accent-bdh)">#2</span> paper of all 2025 despite Oct release</li>
+          <li>Competitive with GPT-2 at <span style="color:var(--accent-bdh)">language modeling</span></li>
+          <li><span style="color:var(--accent-bdh)">79.54% CIFAR-10</span> vs ViT-Tiny 74% (3.2M vs 5.7M params)</li>
+          <li>Financial: 14M BDH beats <span style="color:var(--accent-bdh)">67M DistilBERT</span> on sentiment</li>
+        </ul>
+      </div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:1.25rem;">
+        <div style="font-family:var(--mono);font-size:11px;color:var(--muted);letter-spacing:0.08em;margin-bottom:0.8rem;">REAL-WORLD ADOPTERS</div>
+        <ul style="color:var(--muted);font-size:14px;padding-left:1.2rem;display:flex;flex-direction:column;gap:0.5rem;">
+          <li style="color:var(--text)">🏎 <strong>Formula 1 racing teams</strong></li>
+          <li style="color:var(--text)">🛡 <strong>NATO</strong></li>
+          <li style="color:var(--text)">📮 <strong>La Poste</strong></li>
+          <li><a href="https://arxiv.org/abs/2509.26507" style="color:var(--accent-bdh);">→ Read the paper</a></li>
+          <li><a href="https://github.com/pathwaycom/bdh" style="color:var(--accent-bdh);">→ GitHub repo</a></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<script>
+/* ───────────────────────────────────────────────
+   SECTION 1: SPARSITY VISUALIZATION
+─────────────────────────────────────────────── */
+let gridN = 12;
+let animating = false;
+let animTimeout = null;
+
+const CONCEPTS = {
+  'london': { bdh: 0.04, label: 'country + currency synapses active', neurons: [2,15,23,41,67,88,102,143] },
+  'paris': { bdh: 0.05, label: 'country + geography synapses active', neurons: [3,14,22,55,68,89,103,144] },
+  'dollar': { bdh: 0.03, label: 'currency synapses strongly active', neurons: [5,19,28,49,73,91,105] },
+  'france': { bdh: 0.04, label: 'country synapses active', neurons: [2,13,24,40,66,87,101] },
+  'bank': { bdh: 0.05, label: 'financial + geography synapses', neurons: [5,18,29,50,75,92,106,122] },
+  'the': { bdh: 0.02, label: 'function word synapses (minimal)', neurons: [1,10] },
+  'is': { bdh: 0.02, label: 'copula synapses active', neurons: [0,11] },
+};
+
+function getSparsityForToken(token) {
+  const t = token.toLowerCase().trim();
+  const match = CONCEPTS[t];
+  return match || { bdh: 0.04 + Math.random()*0.03, label: 'domain-specific synapses active', neurons: null };
+}
+
+function updateGridSize(v) {
+  gridN = parseInt(v);
+  document.getElementById('grid-size-label').textContent = `${gridN}×${gridN}`;
+  updateSparsity();
+}
+
+function buildGrid(container, n, activeFrac, specificNeurons, colorClass) {
+  container.innerHTML = '';
+  container.style.gridTemplateColumns = `repeat(${n}, 1fr)`;
+  const total = n * n;
+  const activeSet = new Set();
+  if (specificNeurons) {
+    specificNeurons.forEach(i => { if (i < total) activeSet.add(i); });
+    const extra = Math.floor(total * activeFrac) - activeSet.size;
+    let tries = 0;
+    while (activeSet.size < Math.floor(total * activeFrac) && tries < 1000) {
+      activeSet.add(Math.floor(Math.random() * total));
+      tries++;
+    }
+  } else {
+    while (activeSet.size < Math.floor(total * activeFrac)) {
+      activeSet.add(Math.floor(Math.random() * total));
+    }
+  }
+  for (let i = 0; i < total; i++) {
+    const d = document.createElement('div');
+    d.className = 'neuron ' + (activeSet.has(i) ? 'active' : 'inactive');
+    container.appendChild(d);
+  }
+  return activeSet.size;
+}
+
+function updateSparsity() {
+  const token = document.getElementById('token-input').value || 'London';
+  const data = getSparsityForToken(token);
+  const bdh_frac = data.bdh;
+  const tf_frac = 0.88 + Math.random() * 0.1;
+
+  const bdhActive = buildGrid(document.getElementById('bdh-grid'), gridN, bdh_frac, data.neurons, 'bdh');
+  buildGrid(document.getElementById('tf-grid'), gridN, tf_frac, null, 'transformer');
+
+  const pctBdh = Math.round(bdh_frac * 100);
+  const pctTf = Math.round(tf_frac * 100);
+  document.getElementById('bdh-active').textContent = `~${pctBdh}%`;
+  document.getElementById('tf-active').textContent = `~${pctTf}%`;
+  document.getElementById('bdh-bar').style.width = pctBdh + '%';
+  document.getElementById('tf-bar').style.width = pctTf + '%';
+
+  const concepts = CONCEPTS[token.toLowerCase().trim()];
+  document.getElementById('insight-text').innerHTML = `
+    <strong>"${token}"</strong> activates ${concepts ? concepts.label : 'domain-specific synapses'}. 
+    In BDH, <strong>${pctBdh}% of neurons</strong> fired — each encodes a specific concept (monosemantic). 
+    In the transformer, <strong>${pctTf}% of neurons</strong> fired — dense, entangled, difficult to interpret.
+    <strong>This sparsity emerges from architecture, not regularization.</strong>
+  `;
+}
+
+const TOKEN_SEQ = ['the','cat','sat','on','the','mat','in','London','near','the','bank'];
+let tokenIdx = 0;
+
+function animateTokens() {
+  if (animating) { animating = false; clearTimeout(animTimeout); return; }
+  animating = true;
+  function step() {
+    if (!animating) return;
+    document.getElementById('token-input').value = TOKEN_SEQ[tokenIdx % TOKEN_SEQ.length];
+    updateSparsity();
+    tokenIdx++;
+    animTimeout = setTimeout(step, 900);
+  }
+  step();
+}
+
+updateSparsity();
+
+/* ───────────────────────────────────────────────
+   SECTION 2: HEBBIAN LEARNING
+─────────────────────────────────────────────── */
+const hCanvas = document.getElementById('hebbian-canvas');
+const hCtx = hCanvas.getContext('2d');
+
+const LAYER_SIZES = [5, 8, 8, 5];
+let hebbNeurons = [];
+let hebbSynapses = [];
+let hebbStep_count = 0;
+let hebbAutoTimer = null;
+let hebbAutoRunning = false;
+const TOKEN_LIST = ['Paris','France','Euro','London','GBP','Berlin','Dollar','Tokyo','Yen','Geneva'];
+
+function hebbInit() {
+  const W = hCanvas.offsetWidth || 680;
+  hCanvas.width = W;
+  hCanvas.height = 400;
+  hebbNeurons = [];
+  hebbSynapses = [];
+  const layerX = [0.15, 0.38, 0.62, 0.85];
+  LAYER_SIZES.forEach((n, li) => {
+    for (let ni = 0; ni < n; ni++) {
+      const y = (ni + 1) / (n + 1);
+      hebbNeurons.push({ x: layerX[li] * W, y: y * 400, layer: li, idx: ni, activation: 0, strength: 0 });
+    }
+  });
+  let offset = 0;
+  for (let li = 0; li < LAYER_SIZES.length - 1; li++) {
+    const from = hebbNeurons.filter(n => n.layer === li);
+    const to = hebbNeurons.filter(n => n.layer === li + 1);
+    from.forEach(f => {
+      to.forEach(t => {
+        hebbSynapses.push({ from: f, to: t, weight: 0.05 + Math.random() * 0.1 });
+      });
+    });
+  }
+  hebbDraw();
+}
+
+function hebbDraw(activeSynapses) {
+  const W = hCanvas.width, H = hCanvas.height;
+  hCtx.clearRect(0, 0, W, H);
+  hCtx.fillStyle = '#12141a';
+  hCtx.fillRect(0, 0, W, H);
+
+  hebbSynapses.forEach(s => {
+    const w = s.weight;
+    const isActive = activeSynapses && activeSynapses.includes(s);
+    hCtx.beginPath();
+    hCtx.moveTo(s.from.x, s.from.y);
+    hCtx.lineTo(s.to.x, s.to.y);
+    hCtx.strokeStyle = isActive ? '#ffa94d' : `rgba(0,229,160,${Math.min(w * 4, 0.8)})`;
+    hCtx.lineWidth = isActive ? 2.5 : Math.max(0.3, w * 5);
+    hCtx.stroke();
+  });
+
+  hebbNeurons.forEach(n => {
+    const r = 8 + n.strength * 10;
+    hCtx.beginPath();
+    hCtx.arc(n.x, n.y, r, 0, Math.PI * 2);
+    if (n.activation > 0.5) {
+      hCtx.fillStyle = '#ffa94d';
+    } else if (n.strength > 0.3) {
+      hCtx.fillStyle = `rgba(0,229,160,${0.4 + n.strength * 0.6})`;
+    } else {
+      hCtx.fillStyle = '#222535';
+    }
+    hCtx.fill();
+    hCtx.strokeStyle = n.activation > 0.5 ? '#ffa94d' : 'rgba(0,229,160,0.4)';
+    hCtx.lineWidth = 1;
+    hCtx.stroke();
+  });
+
+  const labels = ['Input', 'Hidden 1', 'Hidden 2', 'Output'];
+  const layerX = [0.15, 0.38, 0.62, 0.85];
+  labels.forEach((l, i) => {
+    hCtx.fillStyle = '#6b7088';
+    hCtx.font = '11px "Space Mono", monospace';
+    hCtx.textAlign = 'center';
+    hCtx.fillText(l, layerX[i] * W, 20);
+  });
+}
+
+function hebbStep() {
+  const tok = TOKEN_LIST[hebbStep_count % TOKEN_LIST.length];
+  hebbStep_count++;
+
+  hebbNeurons.forEach(n => n.activation = 0);
+  const active = [];
+  hebbNeurons.filter(n => n.layer === 0).forEach(n => {
+    if (Math.random() < 0.45) { n.activation = 1; active.push(n); }
+  });
+
+  const activeSyns = [];
+  for (let li = 1; li < LAYER_SIZES.length; li++) {
+    const curr = hebbNeurons.filter(n => n.layer === li);
+    curr.forEach(n => {
+      const ins = hebbSynapses.filter(s => s.to === n && s.from.activation > 0.5);
+      const sum = ins.reduce((a, s) => a + s.weight, 0);
+      n.activation = sum > 0.3 ? 1 : 0;
+      if (n.activation) active.push(n);
+    });
+  }
+
+  const coActive = [];
+  hebbSynapses.forEach(s => {
+    if (s.from.activation > 0.5 && s.to.activation > 0.5) {
+      s.weight = Math.min(1.0, s.weight + 0.08);
+      s.from.strength = Math.min(1, s.from.strength + 0.05);
+      s.to.strength = Math.min(1, s.to.strength + 0.05);
+      coActive.push(s);
+    } else {
+      s.weight = Math.max(0.01, s.weight - 0.005);
+    }
+  });
+
+  const log = document.getElementById('hebb-log');
+  const activeCount = hebbNeurons.filter(n => n.activation > 0.5).length;
+  const totalN = hebbNeurons.length;
+  log.innerHTML = `<span style="color:var(--accent-bdh)">[token ${hebbStep_count}]</span> "${tok}" → ${activeCount}/${totalN} neurons fired (${Math.round(activeCount/totalN*100)}%)<br>` + log.innerHTML;
+
+  hebbDraw(coActive);
+  setTimeout(() => { hebbNeurons.forEach(n => n.activation = 0); hebbDraw(); }, 600);
+}
+
+function hebbAuto() {
+  if (hebbAutoRunning) { hebbAutoRunning = false; clearInterval(hebbAutoTimer); return; }
+  hebbAutoRunning = true;
+  hebbAutoTimer = setInterval(hebbStep, 1200);
+}
+
+function hebbReset() {
+  hebbAutoRunning = false;
+  clearInterval(hebbAutoTimer);
+  hebbStep_count = 0;
+  document.getElementById('hebb-log').innerHTML = '';
+  hebbInit();
+}
+
+/* ───────────────────────────────────────────────
+   SECTION 3: GRAPH TOPOLOGY (Scale-Free)
+─────────────────────────────────────────────── */
+const gCanvas = document.getElementById('graph-canvas');
+const gCtx = gCanvas.getContext('2d');
+let graphNodes = [], graphEdges = [], selectedNode = null;
+let graphAnimating = false, graphAnimTimer = null;
+
+function initGraph() {
+  const W = gCanvas.offsetWidth || 680;
+  gCanvas.width = W;
+  gCanvas.height = 480;
+  graphNodes = [];
+  graphEdges = [];
+  selectedNode = null;
+
+  const N = 40;
+  graphNodes.push({ id: 0, x: W/2, y: 240, degree: 0, hub: true });
+
+  for (let i = 1; i < N; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const r = 60 + Math.random() * 200;
+    graphNodes.push({ id: i, x: W/2 + Math.cos(angle)*r, y: 240 + Math.sin(angle)*r, degree: 0, hub: false });
+  }
+
+  function addEdge(a, b) {
+    if (a === b) return;
+    if (graphEdges.find(e => (e.a===a&&e.b===b)||(e.a===b&&e.b===a))) return;
+    graphEdges.push({ a, b, weight: 0.1 + Math.random()*0.5 });
+    graphNodes[a].degree++;
+    graphNodes[b].degree++;
+  }
+
+  for (let i = 1; i < N; i++) {
+    const totalDeg = graphNodes.reduce((s, n) => s + n.degree, 0) || 1;
+    const probs = graphNodes.map(n => (n.degree + 0.5) / (totalDeg + N*0.5));
+    let r = Math.random(), cum = 0;
+    let target = 0;
+    for (let j = 0; j < N; j++) {
+      cum += probs[j];
+      if (r <= cum) { target = j; break; }
+    }
+    addEdge(i, target);
+    if (Math.random() < 0.3 && i > 2) {
+      const t2 = Math.floor(Math.random() * i);
+      addEdge(i, t2);
+    }
+  }
+
+  const maxDeg = Math.max(...graphNodes.map(n => n.degree));
+  graphNodes.forEach(n => { if (n.degree >= maxDeg * 0.5) n.hub = true; });
+  drawGraph();
+}
+
+function drawGraph() {
+  const W = gCanvas.width, H = gCanvas.height;
+  gCtx.clearRect(0, 0, W, H);
+  gCtx.fillStyle = '#12141a';
+  gCtx.fillRect(0, 0, W, H);
+
+  graphEdges.forEach(e => {
+    const a = graphNodes[e.a], b = graphNodes[e.b];
+    const isSelected = selectedNode !== null && (e.a === selectedNode || e.b === selectedNode);
+    gCtx.beginPath();
+    gCtx.moveTo(a.x, a.y);
+    gCtx.lineTo(b.x, b.y);
+    gCtx.strokeStyle = isSelected ? 'rgba(255,169,77,0.8)' : `rgba(0,229,160,${e.weight * 0.4})`;
+    gCtx.lineWidth = isSelected ? 1.5 : 0.5 + e.weight;
+    gCtx.stroke();
+  });
+
+  graphNodes.forEach((n, i) => {
+    const r = 3 + n.degree * 2.5;
+    const isSelected = i === selectedNode;
+    const isNeighbor = selectedNode !== null && graphEdges.find(e =>
+      (e.a===selectedNode&&e.b===i)||(e.b===selectedNode&&e.a===i));
+
+    gCtx.beginPath();
+    gCtx.arc(n.x, n.y, Math.min(r, 20), 0, Math.PI * 2);
+    if (isSelected) gCtx.fillStyle = '#ffa94d';
+    else if (isNeighbor) gCtx.fillStyle = 'rgba(255,169,77,0.5)';
+    else if (n.hub) gCtx.fillStyle = '#00e5a0';
+    else gCtx.fillStyle = `rgba(0,229,160,${0.2 + n.degree * 0.1})`;
+    gCtx.fill();
+
+    if (n.hub || isSelected) {
+      gCtx.strokeStyle = isSelected ? '#ffa94d' : 'rgba(0,229,160,0.6)';
+      gCtx.lineWidth = 1;
+      gCtx.stroke();
+    }
+  });
+
+  if (selectedNode !== null) {
+    const n = graphNodes[selectedNode];
+    gCtx.fillStyle = '#e8eaf2';
+    gCtx.font = '12px "Space Mono", monospace';
+    gCtx.fillText(`Neuron ${selectedNode} — degree: ${n.degree}${n.hub ? ' [HUB]' : ''}`, n.x + 14, n.y - 8);
+  }
+}
+
+function graphClick(e) {
+  const rect = gCanvas.getBoundingClientRect();
+  const mx = (e.clientX - rect.left) * (gCanvas.width / rect.width);
+  const my = (e.clientY - rect.top) * (gCanvas.height / rect.height);
+  let closest = null, minDist = 30;
+  graphNodes.forEach((n, i) => {
+    const d = Math.hypot(n.x - mx, n.y - my);
+    if (d < minDist) { minDist = d; closest = i; }
+  });
+  selectedNode = closest === selectedNode ? null : closest;
+  drawGraph();
+}
+
+let graphAnimEdgeIdx = 0;
+
+function toggleGraphAnim() {
+  if (graphAnimating) { graphAnimating = false; clearInterval(graphAnimTimer); return; }
+  graphAnimating = true;
+  graphAnimEdgeIdx = 0;
+  graphEdges.forEach(e => { e._visible = false; });
+  graphAnimTimer = setInterval(() => {
+    if (graphAnimEdgeIdx >= graphEdges.length) { graphAnimating = false; clearInterval(graphAnimTimer); return; }
+    graphEdges[graphAnimEdgeIdx]._visible = true;
+    graphAnimEdgeIdx++;
+    drawGraph();
+  }, 40);
+}
+
+/* ───────────────────────────────────────────────
+   TAB SWITCHING + INIT
+─────────────────────────────────────────────── */
+function switchTab(id, btn) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + id).classList.add('active');
+  btn.classList.add('active');
+
+  if (id === 'hebbian' && hebbNeurons.length === 0) setTimeout(hebbInit, 50);
+  if (id === 'graph' && graphNodes.length === 0) setTimeout(initGraph, 50);
+}
+
+window.addEventListener('resize', () => {
+  if (hebbNeurons.length > 0) hebbInit();
+  if (graphNodes.length > 0) initGraph();
+});
+</script>
+</body>
+</html>

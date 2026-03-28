@@ -1,0 +1,16 @@
+# BDH Sparse Brain Visualizer — Python dependencies
+# For the instrumentation scripts (src/) and notebook
+
+# Core ML
+torch>=2.0.0
+numpy>=1.24.0
+
+# Visualization (notebook only)
+matplotlib>=3.7.0
+
+# Optional: for the Jupyter notebook
+jupyter>=1.0.0
+ipykernel>=6.0.0
+
+# Note: The main visualizer (index.html) has NO Python dependencies.
+# It runs entirely in the browser — just open index.html.

@@ -187,9 +187,10 @@ Full details in [`docs/METHODOLOGY.md`](docs/METHODOLOGY.md). In brief:
 
 | Name | Role | Institute |
 |------|------|-----------|
-| [Your Name] | Visualization, Frontend | IIT Ropar |
-| [Teammate 2] | BDH Instrumentation, ML | IIT Ropar |
-| [Teammate 3] | Architecture Research | IIT Ropar |
+| Vanshiv Garg | Visualization, Frontend | IIIT UNA |
+| Abhishek Kumar Sinha | BDH Instrumentation, ML | IIIT UNA |
+| Neev Bolia | Architecture Research | IIIT UNA |
+| Sujeet | Frontend Helper | IIIT UNA |
 
 ---
 

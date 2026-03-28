@@ -5,7 +5,7 @@
 
 <div align="center">
 
-[![Live Demo](https://img.shields.io/badge/🚀_Live_Demo-HuggingFace_Space-orange?style=for-the-badge)](https://huggingface.co/spaces/YOUR_USERNAME/bdh-sparse-brain)
+[![Live Demo](https://img.shields.io/badge/🚀_Live_Demo-HuggingFace_Space-orange?style=for-the-badge)](https://huggingface.co/spaces/Vanshiv/bdh-sparse-brain)
 [![Paper](https://img.shields.io/badge/📄_Paper-arXiv_2509.26507-blue?style=for-the-badge)](https://arxiv.org/abs/2509.26507)
 [![Repo](https://img.shields.io/badge/⚙️_BDH_Repo-pathwaycom/bdh-green?style=for-the-badge)](https://github.com/pathwaycom/bdh)
 [![License](https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge)](LICENSE)

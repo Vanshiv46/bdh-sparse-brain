@@ -183,7 +183,7 @@ Full details in [`docs/METHODOLOGY.md`](docs/METHODOLOGY.md). In brief:
 
 ---
 
-## 🙌 Team
+## 🙌 TripleIT Titans
 
 | Name | Role | Institute |
 |------|------|-----------|

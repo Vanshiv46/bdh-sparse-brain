@@ -943,7 +943,7 @@ function initGraph() {
   function addEdge(a, b) {
     if (a === b) return;
     if (graphEdges.find(e => (e.a===a&&e.b===b)||(e.a===b&&e.b===a))) return;
-    graphEdges.push({ a, b, weight: 0.1 + Math.random()*0.5 });
+    graphEdges.push({ a, b, weight: 0.1 + Math.random()*0.5, _visible: true });
     graphNodes[a].degree++;
     graphNodes[b].degree++;
   }
@@ -975,7 +975,7 @@ function drawGraph() {
   gCtx.fillStyle = '#12141a';
   gCtx.fillRect(0, 0, W, H);
 
-  graphEdges.forEach(e => {
+  graphEdges.filter(e => e._visible !== false).forEach(e => {
     const a = graphNodes[e.a], b = graphNodes[e.b];
     const isSelected = selectedNode !== null && (e.a === selectedNode || e.b === selectedNode);
     gCtx.beginPath();

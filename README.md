@@ -34,7 +34,7 @@ The Transformer Explainer by Georgia Tech became the standard for understanding 
 
 ## 🎬 Demo Preview
 
-> **[👉 Click here for the Live Demo](https://huggingface.co/spaces/YOUR_USERNAME/bdh-sparse-brain)**
+> **[👉 Click here for the Live Demo](https://huggingface.co/spaces/Vanshiv/bdh-sparse-brain)**
 
 The visualizer has **4 interactive sections**:
 

@@ -6,8 +6,7 @@
 <div align="center">
 
 [![Live Demo](https://img.shields.io/badge/🚀_Live_Demo-HuggingFace_Space-orange?style=for-the-badge)](https://huggingface.co/spaces/Vanshiv/bdh-sparse-brain)
-[![YouTube Demo](https://img.shields.io/badge/🎥_YouTube-Demo-red?style=for-the-badge)]((https://youtu.be/5_psd2zd8fQ))
-[![Paper](https://img.shields.io/badge/📄_Paper-arXiv_2509.26507-blue?style=for-the-badge)](https://arxiv.org/abs/2509.26507)
+[![YouTube Demo](https://img.shields.io/badge/YouTube-Demo-FF0000?style=for-the-badge&logo=youtube&logoColor=white)](https://youtu.be/5_psd2zd8fQ)[![Paper](https://img.shields.io/badge/📄_Paper-arXiv_2509.26507-blue?style=for-the-badge)](https://arxiv.org/abs/2509.26507)
 [![Repo](https://img.shields.io/badge/⚙️_BDH_Repo-pathwaycom/bdh-green?style=for-the-badge)](https://github.com/pathwaycom/bdh)
 [![License](https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge)](LICENSE)
 
